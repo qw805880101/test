@@ -35,9 +35,16 @@
         <activity android:name=".NavigationActivity"/>
 
         <!--高德地图-->
+        <!--<meta-data-->
+            <!--android:name="com.amap.api.v2.apikey"-->
+            <!--android:value="e1f0b872ca91387d54c2f413964ad239"/>-->
+
+
+        <!--高德地图-->
         <meta-data
             android:name="com.amap.api.v2.apikey"
-            android:value="e1f0b872ca91387d54c2f413964ad239"/>
+            android:value="9b949c49a7e3dc09401eee2df03c2a2d"/>
+
 
         <!--定位service-->
         <service android:name="com.amap.api.location.APSService"></service>
