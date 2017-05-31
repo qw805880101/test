@@ -4,7 +4,6 @@ import android.app.*;
 import android.graphics.*;
 import android.os.*;
 import android.support.annotation.*;
-import android.util.*;
 import android.view.*;
 import android.view.View.*;
 import android.widget.*;
@@ -18,18 +17,15 @@ import com.amap.api.navi.model.*;
 import com.amap.api.services.core.*;
 import com.amap.api.services.geocoder.*;
 import com.amap.api.services.geocoder.GeocodeSearch.*;
-import com.amap.api.trace.*;
 import com.autonavi.tbt.*;
 
 import java.util.*;
-
-import static android.content.ContentValues.TAG;
 
 /**
  * Created by tc on 2017/5/27.
  */
 
-public class MainActivity extends Activity implements OnClickListener, AMapLocationListener, AMapNaviListener, OnGeocodeSearchListener, TraceListener {
+public class NavigationActivity extends Activity implements OnClickListener, AMapLocationListener, AMapNaviListener, OnGeocodeSearchListener {
 
     //声明AMapLocationClient类对象
     public AMapLocationClient mLocationClient = null;
@@ -37,6 +33,8 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
     public AMapLocationClientOption mLocationOption = null;
 
     private MapView mMapView = null;
+
+    private AMapNaviView mAMapNaviView;
 
     //初始化地图控制器对象
     private AMap aMap;
@@ -62,10 +60,6 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
 
     private String cityCode;
 
-    private LBSTraceClient mTraceClient;
-
-    private List<TraceLocation> mTraceLocations;
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,15 +71,12 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
 
     private void initView(Bundle savedInstanceState) {
         //获取地图控件引用
-        mMapView = (MapView) findViewById(R.id.map);
+        mAMapNaviView = (AMapNaviView) findViewById(R.id.navi_view);
         //在activity执行onCreate时执行mMapView.onCreate(savedInstanceState)，创建地图
-        mMapView.onCreate(savedInstanceState);
+        mAMapNaviView.onCreate(savedInstanceState);
         if (aMap == null) {
-            aMap = mMapView.getMap();
+            aMap = mAMapNaviView.getMap();
         }
-        mTraceClient = LBSTraceClient.getInstance(this);
-        mTraceLocations = new ArrayList<>();
-
 
         etStartPoint = (EditText) findViewById(R.id.et_start_point);
 
@@ -147,7 +138,6 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
         mPolyoptions = new PolylineOptions();
         mPolyoptions.width(15f);
         mPolyoptions.color(Color.BLUE);
-
         tracePolytion = new PolylineOptions();
         tracePolytion.width(40);
         tracePolytion.setCustomTexture(BitmapDescriptorFactory.fromResource(R.drawable.grasp_trace_line));
@@ -211,7 +201,7 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
                 } else {
                     endLatlng = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
                     mPolyoptions.add(endLatlng);
-                    drawLine(amapLocation);
+                    drawLine();
                 }
 
             } else {
@@ -226,21 +216,19 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
     /**
      * 绘制线段
      */
-    private void drawLine(AMapLocation amapLocation) {
+    private void drawLine() {
         System.out.println("画线，画线。。。。。");
 //        Polyline polyline = aMap.addPolyline(new PolylineOptions().add(new LatLng(0,0)).width(20).color(Color.RED));
 
         if (mPolyoptions.getPoints().size() > 1) {
             if (mpolyline != null) {
                 mpolyline.setPoints(mPolyoptions.getPoints());
-                mTraceLocations.add(Utils.parseTraceLocation(amapLocation));
             } else {
                 mpolyline = aMap.addPolyline(mPolyoptions);
                 mpolyline.setZIndex(0);
             }
         }
-        mTraceClient.queryProcessedTrace(1, mTraceLocations,
-                LBSTraceClient.TYPE_AMAP, this);
+
 //        Polyline polyline = aMap.addPolyline(new PolylineOptions().addAll(latLngs).width(10).color(Color.RED));
     }
 
@@ -248,21 +236,21 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
     protected void onDestroy() {
         super.onDestroy();
         //在activity执行onDestroy时执行mMapView.onDestroy()，销毁地图
-        mMapView.onDestroy();
+        mAMapNaviView.onDestroy();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         //在activity执行onResume时执行mMapView.onResume ()，重新绘制加载地图
-        mMapView.onResume();
+        mAMapNaviView.onResume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        //在activity执行onPause时执行mMapView.onPause ()，暂停地图的绘制
-        mMapView.onPause();
+        //mAMapNaviView.onPause ()，暂停地图的绘制
+        mAMapNaviView.onPause();
     }
 
     @Override
@@ -342,7 +330,9 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
             latLngs.add(new LatLng(mapNaviPath.getCoordList().get(i).getLatitude(), mapNaviPath.getCoordList().get(i).getLongitude()));
         }
 
-        aMap.addPolyline(new PolylineOptions().addAll(latLngs).width(10).color(Color.RED));
+        aMap.addPolyline(new PolylineOptions().addAll(latLngs).width(15).color(Color.RED));
+
+//        mAMapNavi.startNavi(NaviType.GPS);
     }
 
     @Override
@@ -483,29 +473,5 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
         mAMapNavi = AMapNavi.getInstance(getApplicationContext());
         //添加监听回调，用于处理算路成功
         mAMapNavi.addAMapNaviListener(this);
-    }
-
-    @Override
-    public void onRequestFailed(int i, String s) {
-
-    }
-
-    @Override
-    public void onTraceProcessing(int i, int i1, List<LatLng> list) {
-
-    }
-
-    @Override
-    public void onFinished(int i, List<LatLng> list, int i1, int i2) {
-        Log.d(TAG, "onFinished");
-        Toast.makeText(this.getApplicationContext(), "onFinished",
-                Toast.LENGTH_SHORT).show();
-//        if (mOverlayList.containsKey(lineID)) {
-//            TraceOverlay overlay = mOverlayList.get(lineID);
-//            overlay.setTraceStatus(TraceOverlay.TRACE_STATUS_FINISH);
-//            overlay.setDistance(distance);
-//            overlay.setWaitTime(waitingtime);
-//            setDistanceWaitInfo(overlay);
-//        }
     }
 }
