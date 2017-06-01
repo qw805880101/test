@@ -240,7 +240,6 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
                         addCircle(endLatlng, amapLocation.getAccuracy());//添加定位精度圆
                         addMarker(endLatlng);//添加定位图标
                         endLatlng = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
-                        endLatlng = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
                         mPolyoptions.add(endLatlng);
                         drawLine(amapLocation);
                     } else {
