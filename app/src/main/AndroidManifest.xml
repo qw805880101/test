@@ -25,7 +25,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".MapActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -35,15 +35,15 @@
         <activity android:name=".NavigationActivity"/>
 
         <!--高德地图-->
-        <!--<meta-data-->
-            <!--android:name="com.amap.api.v2.apikey"-->
-            <!--android:value="e1f0b872ca91387d54c2f413964ad239"/>-->
+        <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="e1f0b872ca91387d54c2f413964ad239"/>
 
 
         <!--高德地图-->
-        <meta-data
-            android:name="com.amap.api.v2.apikey"
-            android:value="9b949c49a7e3dc09401eee2df03c2a2d"/>
+        <!--<meta-data-->
+            <!--android:name="com.amap.api.v2.apikey"-->
+            <!--android:value="9b949c49a7e3dc09401eee2df03c2a2d"/>-->
 
 
         <!--定位service-->

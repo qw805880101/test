@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/activity_main"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+              android:id="@+id/activity_main"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,12 +13,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="起点:"
-            android:textSize="18sp" />
+            android:textSize="18sp"/>
 
         <EditText
             android:id="@+id/et_start_point"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"/>
     </LinearLayout>
 
     <LinearLayout
@@ -29,12 +29,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="终点:"
-            android:textSize="18sp" />
+            android:textSize="18sp"/>
 
         <EditText
             android:id="@+id/et_stop_point"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"/>
 
     </LinearLayout>
 
@@ -47,18 +47,42 @@
             android:id="@+id/bt_start"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="开始" />
+            android:text="开始行程"/>
 
         <Button
             android:id="@+id/bt_stop"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="结束" />
+            android:text="结束行程"/>
+
+        <Button
+            android:id="@+id/chakan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="查看路线"/>
+
+        <Button
+            android:id="@+id/jietu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="截图"
+            android:visibility="gone"/>
 
     </LinearLayout>
+
+    <ImageView
+        android:id="@+id/image"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_gravity="center"
+        android:src="@mipmap/ic_launcher"
+        android:visibility="gone"
+        />
 
     <com.amap.api.maps.MapView
         android:id="@+id/map"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"/>
+
+
 </LinearLayout>

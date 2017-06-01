@@ -4,7 +4,6 @@ import android.app.*;
 import android.graphics.*;
 import android.os.*;
 import android.support.annotation.*;
-import android.util.*;
 import android.view.*;
 import android.view.View.*;
 import android.widget.*;
@@ -12,24 +11,26 @@ import android.widget.*;
 import com.amap.api.location.*;
 import com.amap.api.location.AMapLocationClientOption.*;
 import com.amap.api.maps.*;
+import com.amap.api.maps.AMap.*;
 import com.amap.api.maps.model.*;
 import com.amap.api.navi.*;
 import com.amap.api.navi.model.*;
 import com.amap.api.services.core.*;
 import com.amap.api.services.geocoder.*;
 import com.amap.api.services.geocoder.GeocodeSearch.*;
+import com.amap.api.services.route.*;
+import com.amap.api.services.route.RouteSearch.*;
 import com.amap.api.trace.*;
 import com.autonavi.tbt.*;
 
 import java.util.*;
 
-import static android.content.ContentValues.TAG;
-
 /**
  * Created by tc on 2017/5/27.
  */
 
-public class MainActivity extends Activity implements OnClickListener, AMapLocationListener, AMapNaviListener, OnGeocodeSearchListener, TraceListener {
+public class MainActivity extends Activity implements OnClickListener, AMapLocationListener, AMapNaviListener, OnGeocodeSearchListener, TraceListener,
+        LocationSource, OnMapScreenShotListener, OnRouteSearchListener {
 
     //声明AMapLocationClient类对象
     public AMapLocationClient mLocationClient = null;
@@ -45,7 +46,7 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
 
     private PolylineOptions mPolyoptions, tracePolytion;
 
-    private Button btStart, btStop;
+    private Button btStart, btStop, btJieTu;
 
     private EditText etStartPoint, etStopPoint;
 
@@ -66,6 +67,15 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
 
     private List<TraceLocation> mTraceLocations;
 
+    private static final int STROKE_COLOR = Color.argb(180, 3, 145, 255);
+    private static final int FILL_COLOR = Color.argb(10, 0, 0, 180);
+
+    private SensorEventHelper mSensorHelper;
+
+    private Marker mLocMarker;
+
+    private ImageView imageView;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,6 +93,11 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
         if (aMap == null) {
             aMap = mMapView.getMap();
         }
+        mSensorHelper = new SensorEventHelper(this);
+        if (mSensorHelper != null) {
+            mSensorHelper.registerSensorListener();
+        }
+
         mTraceClient = LBSTraceClient.getInstance(this);
         mTraceLocations = new ArrayList<>();
 
@@ -95,9 +110,25 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
 
         btStop = (Button) findViewById(R.id.bt_stop);
 
+        btJieTu = (Button) findViewById(R.id.jietu);
+
+        btJieTu.setOnClickListener(this);
         btStart.setOnClickListener(this);
         btStop.setOnClickListener(this);
 
+        imageView = (ImageView) findViewById(R.id.image);
+
+    }
+
+    /**
+     * 设置一些amap的属性
+     */
+    private void setUpMap() {
+        aMap.setLocationSource(this);// 设置定位监听
+        aMap.getUiSettings().setMyLocationButtonEnabled(true);// 设置默认定位按钮是否显示
+        aMap.setMyLocationEnabled(true);// 设置为true表示显示定位层并可触发定位，false表示隐藏定位层并不可触发定位，默认是false
+        // 设置定位的类型为定位模式 ，可以由定位、跟随或地图根据面向方向旋转几种
+        aMap.setMyLocationType(AMap.LOCATION_TYPE_LOCATE);
     }
 
     /**
@@ -178,7 +209,7 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
     @Override
     public void onClick(View v) {
         if (v == btStart) {
-
+            imageView.setVisibility(View.GONE);
             if (etStopPoint.getText().toString().trim() == null || etStopPoint.getText().toString().trim().equals("")) {
                 Toast.makeText(this, "请输入终点位置", Toast.LENGTH_SHORT).show();
                 return;
@@ -186,6 +217,8 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
             start();
         } else if (v == btStop) {
             stop();
+        } else if (v == btJieTu) {
+            getImage();
         }
     }
 
@@ -208,19 +241,20 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
                     cityCode = amapLocation.getCityCode();
                     //停止定位
                     mLocationClient.stopLocation();
+                    endLatlng = latLng;
 
-                    MyLocationStyle myLocationStyle;
-                    myLocationStyle = new MyLocationStyle();//初始化定位蓝点样式类myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE);//连续定位、且将视角移动到地图中心点，定位点依照设备方向旋转，并且会跟随设备移动。（1秒1次定位）如果不设置myLocationType，默认也会执行此种模式。
-                    myLocationStyle.interval(5000); //设置连续定位模式下的定位间隔，只在连续定位模式下生效，单次定位模式下不会生效。单位为毫秒。
-                    aMap.setMyLocationStyle(myLocationStyle);//设置定位蓝点的Style
-                    myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW) ;//连续定位、且将视角移动到地图中心点，定位蓝点跟随设备移动。（1秒1次定位）
-//aMap.getUiSettings().setMyLocationButtonEnabled(true);设置默认定位按钮是否显示，非必需设置。
-                    aMap.setMyLocationEnabled(true);// 设置为true表示启动显示定位蓝点，false表示隐藏定位蓝点并不进行定位，默认是false。
+                    addCircle(latLng, amapLocation.getAccuracy());//添加定位精度圆
+                    addMarker(latLng);//添加定位图标
+                    mSensorHelper.setCurrentMarker(mLocMarker);//定位图标旋转
 
                 } else {
-                    endLatlng = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
-                    mPolyoptions.add(endLatlng);
-                    drawLine(amapLocation);
+                    if (Utils.GetDistance(endLatlng.longitude, endLatlng.latitude, amapLocation.getLongitude(), amapLocation.getLatitude()) > 10) {
+                        endLatlng = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
+                        mPolyoptions.add(endLatlng);
+                        drawLine(amapLocation);
+                    } else {
+                        System.out.println("移动距离不到10米");
+                    }
                 }
 
             } else {
@@ -469,6 +503,10 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
 
         System.out.println("i = " + i + "geocodeResult.getGeocodeAddressList().size() " + geocodeResult.getGeocodeAddressList().size());
 
+        float a = mMapView.getMap().getCameraPosition().zoom;
+
+        System.out.println("zoom = " + a);
+
         //解析result获取坐标信息
         if (i == 1000) {
             LatLonPoint latLonPoint;
@@ -476,8 +514,23 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
             for (int j = 0; j < geocodeResult.getGeocodeAddressList().size(); j++) {
                 latLonPoint = geocodeResult.getGeocodeAddressList().get(j).getLatLonPoint();
                 to.add(new NaviLatLng(latLonPoint.getLatitude(), latLonPoint.getLongitude()));
-                CameraUpdate mCamer = CameraUpdateFactory.newLatLngZoom(new LatLng(latLonPoint.getLatitude(), latLonPoint.getLongitude()), 20);
-                aMap.animateCamera(mCamer);
+//                CameraUpdate mCamer = CameraUpdateFactory.newLatLngZoom(new LatLng(latLonPoint.getLatitude(), latLonPoint.getLongitude()), a);
+//                aMap.animateCamera(mCamer);
+
+                CameraUpdate mCamer = CameraUpdateFactory.newLatLngBounds(
+                        new LatLngBounds(
+                                new LatLng(from.get(j).getLatitude(), from.get(j).getLongitude()),
+                                new LatLng(latLonPoint.getLatitude(), latLonPoint.getLongitude())),
+                        10);
+
+                double longit = (from.get(j).getLatitude() + from.get(j).getLongitude()) / 2;
+                double lati = (latLonPoint.getLatitude() + latLonPoint.getLongitude()) / 2;
+
+                System.out.println("longit = " + longit);
+                System.out.println("lati = " + lati);
+                aMap.animateCamera(CameraUpdateFactory.changeLatLng(new LatLng(lati, longit)));
+                aMap.moveCamera(mCamer);
+
                 initNavi();
                 System.out.println("结束坐标" + geocodeResult.getGeocodeAddressList().get(j).getLatLonPoint());
             }
@@ -506,9 +559,6 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
 
     @Override
     public void onFinished(int i, List<LatLng> list, int i1, int i2) {
-        Log.d(TAG, "onFinished");
-        Toast.makeText(this.getApplicationContext(), "onFinished",
-                Toast.LENGTH_SHORT).show();
 //        if (mOverlayList.containsKey(lineID)) {
 //            TraceOverlay overlay = mOverlayList.get(lineID);
 //            overlay.setTraceStatus(TraceOverlay.TRACE_STATUS_FINISH);
@@ -516,5 +566,93 @@ public class MainActivity extends Activity implements OnClickListener, AMapLocat
 //            overlay.setWaitTime(waitingtime);
 //            setDistanceWaitInfo(overlay);
 //        }
+    }
+
+    @Override
+    public void activate(OnLocationChangedListener onLocationChangedListener) {
+//        mListener = onLocationChangedListener;
+//        if (mlocationClient == null) {
+//            mlocationClient = new AMapLocationClient(this);
+//            mLocationOption = new AMapLocationClientOption();
+//            //设置定位监听
+//            mlocationClient.setLocationListener(this);
+//            //设置为高精度定位模式
+//            mLocationOption.setLocationMode(AMapLocationMode.Hight_Accuracy);
+//            //设置定位参数
+//            mlocationClient.setLocationOption(mLocationOption);
+//            // 此方法为每隔固定时间会发起一次定位请求，为了减少电量消耗或网络流量消耗，
+//            // 注意设置合适的定位时间的间隔（最小间隔支持为2000ms），并且在合适时间调用stopLocation()方法来取消定位请求
+//            // 在定位结束后，在合适的生命周期调用onDestroy()方法
+//            // 在单次定位情况下，定位无论成功与否，都无需调用stopLocation()方法移除请求，定位sdk内部会移除
+//            mlocationClient.startLocation();
+//        }
+    }
+
+    @Override
+    public void deactivate() {
+//        mListener = null;
+//        if (mlocationClient != null) {
+//            mlocationClient.stopLocation();
+//            mlocationClient.onDestroy();
+//        }
+//        mlocationClient = null;
+    }
+
+    private void getImage() {
+        aMap.getMapScreenShot(this);
+    }
+
+    private void addCircle(LatLng latlng, double radius) {
+        CircleOptions options = new CircleOptions();
+        options.strokeWidth(1f);
+        options.fillColor(FILL_COLOR);
+        options.strokeColor(STROKE_COLOR);
+        options.center(latlng);
+        options.radius(radius);
+        aMap.addCircle(options);
+    }
+
+    private void addMarker(LatLng latlng) {
+        if (mLocMarker != null) {
+            return;
+        }
+        MarkerOptions options = new MarkerOptions();
+        options.icon(BitmapDescriptorFactory.fromBitmap(BitmapFactory.decodeResource(this.getResources(),
+                R.mipmap.navi_map_gps_locked)));
+        options.anchor(0.5f, 0.5f);
+        options.position(latlng);
+        mLocMarker = aMap.addMarker(options);
+//        mLocMarker.setTitle(LOCATION_MARKER_FLAG);
+    }
+
+    @Override
+    public void onMapScreenShot(Bitmap bitmap) {
+        imageView.setImageBitmap(bitmap);
+        imageView.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void onMapScreenShot(Bitmap bitmap, int i) {
+
+    }
+
+    @Override
+    public void onBusRouteSearched(BusRouteResult busRouteResult, int i) {
+
+    }
+
+    @Override
+    public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int i) {
+
+    }
+
+    @Override
+    public void onWalkRouteSearched(WalkRouteResult walkRouteResult, int i) {
+
+    }
+
+    @Override
+    public void onRideRouteSearched(RideRouteResult rideRouteResult, int i) {
+
     }
 }
