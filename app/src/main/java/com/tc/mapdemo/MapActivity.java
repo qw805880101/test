@@ -246,6 +246,12 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
                     } else {
                         System.out.println("移动距离不到10米");
                     }
+
+                    if (mLocMarker == null && circle == null) {
+                        addCircle(endLatlng, amapLocation.getAccuracy());//添加定位精度圆
+                        addMarker(endLatlng);//添加定位图标
+                    }
+
                 }
 
             } else {
