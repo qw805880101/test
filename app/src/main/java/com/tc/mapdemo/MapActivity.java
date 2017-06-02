@@ -43,14 +43,7 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
     //初始化地图控制器对象
     private AMap aMap;
 
-    //定位图图标
-    private Marker mLocMarker;
-
-    //定位精度圈
-    private Circle circle;
-
-    //定位图图标方向辅助类
-    private SensorEventHelper mSensorHelper;
+    private MyLocationStyle myLocationStyle; //定位小蓝点
 
     //声明AMapLocationClient类对象
     private AMapLocationClient mLocationClient = null;
@@ -113,12 +106,17 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
         mMapView.onCreate(savedInstanceState);
         if (aMap == null) {
             aMap = mMapView.getMap();
-        }
+            MyLocationStyle myLocationStyle = new MyLocationStyle();
+            myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE);
+            myLocationStyle.myLocationIcon(BitmapDescriptorFactory.fromBitmap(BitmapFactory.decodeResource(this.getResources(),
+                    R.mipmap.navi_map_gps_locked)));
+            myLocationStyle.strokeColor(STROKE_COLOR);//设置定位蓝点精度圆圈的边框颜色的方法。
+            myLocationStyle.radiusFillColor(FILL_COLOR);//设置定位蓝点精度圆圈的填充颜色的方法。
+            myLocationStyle.interval(2000); //设置连续定位模式下的定位间隔，只在连续定位模式下生效，单次定位模式下不会生效。单位为毫秒。
+            myLocationStyle.strokeWidth(1f);
+            aMap.setMyLocationStyle(myLocationStyle);//设置定位蓝点的Style
+            aMap.setMyLocationEnabled(true);// 设置为true表示启动显示定位蓝点，false表示隐藏定位蓝点并不进行定位，默认是false。v
 
-        /* 定位图标相关 */
-        mSensorHelper = new SensorEventHelper(this);
-        if (mSensorHelper != null) {
-            mSensorHelper.registerSensorListener();
         }
 
         /* 路线规划 */
@@ -147,7 +145,7 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
 //        mLocationOption.setLocationMode(AMapLocationMode.Device_Sensors);
 
         //设置定位间隔,单位毫秒,默认为2000ms，最低1000ms。
-        mLocationOption.setInterval(5000);
+        mLocationOption.setInterval(1000);
 
         //设置是否返回地址信息（默认返回地址信息）
         mLocationOption.setNeedAddress(true);
@@ -171,13 +169,40 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
     @Override
     public void onClick(View v) {
         if (v == btStart) {
+            btJieTu.setVisibility(View.GONE);
             imageView.setVisibility(View.GONE);
-            aMap.clear();// 清理地图上的所有覆盖物
+//            aMap.clear();
+            if (mpolyline != null) {
+                mpolyline.remove();
+            }
+            if (drivingRouteOverlay != null)
+                drivingRouteOverlay.removeFromMap();
             //启动定位
             mLocationClient.startLocation();
+            aMap.animateCamera(CameraUpdateFactory.newLatLngZoom(endLatlng, 50));//设置地图中心点以及缩放大小
         } else if (v == btStop) {
+//            mStartPoint = new LatLonPoint(31.216399, 121.532173);
+//            mEndPoint = new LatLonPoint(31.210598, 121.51815);
+            mEndPoint = new LatLonPoint(endLatlng.latitude, endLatlng.longitude);//设置路线终点
             mLocationClient.stopLocation();
-            aMap.getMapScreenShot(this); //截图
+            drivingRouteOverlay = new DrivingRouteOverlay(
+                    this, aMap,
+                    mStartPoint,
+                    mEndPoint, null);
+            drivingRouteOverlay.setNodeIconVisibility(true);//设置节点marker是否显示
+            drivingRouteOverlay.setIsColorfulline(false);//是否用颜色展示交通拥堵情况，默认true
+            drivingRouteOverlay.zoomToSpan(new CancelableCallback() {
+                @Override
+                public void onFinish() {
+                    btJieTu.setVisibility(View.VISIBLE);
+                }
+
+                @Override
+                public void onCancel() {
+
+                }
+            });
+
         } else if (v == btChaKan) {
             imageView.setVisibility(View.GONE);
             mLocationClient.stopLocation();
@@ -190,6 +215,7 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
             //query.getCity();
             geocoderSearch.getFromLocationNameAsyn(query);
         } else if (v == btJieTu) {
+            aMap.getMapScreenShot(MapActivity.this); //截图
         }
     }
 
@@ -224,33 +250,25 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
         if (amapLocation != null) {
             if (amapLocation.getErrorCode() == 0) {
                 if (isFirst) {//绘制开始Marker点
+                    System.out.println("isFirsts");
                     isFirst = false;
                     etStartPoint.setText(amapLocation.getStreet()); //设置街道信息
                     cityCode = amapLocation.getCityCode();//设置城市代码
                     endLatlng = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());//设置最后定位经纬度
 
-                    addCircle(endLatlng, amapLocation.getAccuracy());//添加定位精度圆
-                    addMarker(endLatlng);//添加定位图标
-
                     mStartPoint = new LatLonPoint(amapLocation.getLatitude(), amapLocation.getLongitude());//设置路线起点
+
+                    aMap.animateCamera(CameraUpdateFactory.newLatLngZoom(endLatlng, 50));//设置地图中心点以及缩放大小
 
                     mLocationClient.stopLocation(); //停止定位
                 } else {
-                    if (Utils.GetDistance(endLatlng.longitude, endLatlng.latitude, amapLocation.getLongitude(), amapLocation.getLatitude()) > 10) {
-                        addCircle(endLatlng, amapLocation.getAccuracy());//添加定位精度圆
-                        addMarker(endLatlng);//添加定位图标
+                    if (Utils.GetDistance(endLatlng.longitude, endLatlng.latitude, amapLocation.getLongitude(), amapLocation.getLatitude()) > 1) {
                         endLatlng = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
                         mPolyoptions.add(endLatlng);
                         drawLine(amapLocation);
                     } else {
                         System.out.println("移动距离不到10米");
                     }
-
-                    if (mLocMarker == null && circle == null) {
-                        addCircle(endLatlng, amapLocation.getAccuracy());//添加定位精度圆
-                        addMarker(endLatlng);//添加定位图标
-                    }
-
                 }
 
             } else {
@@ -276,32 +294,6 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
         }
     }
 
-    //添加精度园
-    private void addCircle(LatLng latlng, double radius) {
-        CircleOptions options = new CircleOptions();
-        options.strokeWidth(1f);
-        options.fillColor(FILL_COLOR);
-        options.strokeColor(STROKE_COLOR);
-        options.center(latlng);
-        options.radius(radius);
-        circle = aMap.addCircle(options);
-    }
-
-    //添加定位图图标
-    private void addMarker(LatLng latlng) {
-        if (mLocMarker != null) {
-            return;
-        }
-        MarkerOptions options = new MarkerOptions();
-        options.icon(BitmapDescriptorFactory.fromBitmap(BitmapFactory.decodeResource(this.getResources(),
-                R.mipmap.navi_map_gps_locked)));
-        options.anchor(0.5f, 0.5f);
-        options.position(latlng);
-        mLocMarker = aMap.addMarker(options);
-        mSensorHelper.setCurrentMarker(mLocMarker);//定位图标旋转
-        aMap.animateCamera(CameraUpdateFactory.newLatLngZoom(endLatlng, 18));//设置地图中心点以及缩放大小
-    }
-
     /**
      * 公交换乘路径规划结果的回调方法。
      *
@@ -313,6 +305,8 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
 
     }
 
+    DrivingRouteOverlay drivingRouteOverlay;
+
     /**
      * 驾车路径规划结果的回调方法。
      *
@@ -321,16 +315,14 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
      */
     @Override
     public void onDriveRouteSearched(DriveRouteResult driveRouteResult, int i) {
-        aMap.clear();// 清理地图上的所有覆盖物
-        mLocMarker = null;
-        circle = null;
+//        aMap.clear();// 清理地图上的所有覆盖物
         if (i == 1000) {
             if (driveRouteResult != null && driveRouteResult.getPaths() != null) {
                 if (driveRouteResult.getPaths().size() > 0) {
                     this.mDriveRouteResult = driveRouteResult;
                     final DrivePath drivePath = mDriveRouteResult.getPaths()
                             .get(0);
-                    DrivingRouteOverlay drivingRouteOverlay = new DrivingRouteOverlay(
+                    drivingRouteOverlay = new DrivingRouteOverlay(
                             this, aMap, drivePath,
                             mDriveRouteResult.getStartPos(),
                             mDriveRouteResult.getTargetPos(), null);
@@ -339,6 +331,7 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
                     drivingRouteOverlay.removeFromMap();
                     drivingRouteOverlay.addToMap();
                     drivingRouteOverlay.zoomToSpan();
+
                 } else if (driveRouteResult != null && driveRouteResult.getPaths() == null) {
                     Toast.makeText(this, "错误码：" + i, Toast.LENGTH_SHORT).show();
                 }
@@ -391,7 +384,6 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
      */
     @Override
     public void onGeocodeSearched(GeocodeResult geocodeResult, int i) {
-
         if (i == 1000) {
             LatLonPoint latLonPoint;
             for (int j = 0; j < geocodeResult.getGeocodeAddressList().size(); j++) {
@@ -421,6 +413,5 @@ public class MapActivity extends Activity implements OnClickListener, AMapLocati
      */
     @Override
     public void onMapScreenShot(Bitmap bitmap, int status) {
-
     }
 }

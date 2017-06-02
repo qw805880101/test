@@ -32,8 +32,6 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".NavigationActivity"/>
-
         <!--高德地图-->
         <meta-data
             android:name="com.amap.api.v2.apikey"

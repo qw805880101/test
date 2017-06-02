@@ -42,13 +42,15 @@ dependencies {
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'com.android.support:design:25.3.1'
 
+    compile 'com.alibaba:fastjson:1.1.57.android'
+
     /*高德地图*/
     //3D地图
-//    compile 'com.amap.api:3dmap:latest.integration'
+    compile 'com.amap.api:3dmap:latest.integration'
     //2D地图
 //    compile 'com.amap.api:map2d:latest.integration'
     //导航
-    compile 'com.amap.api:navi-3dmap:latest.integration'
+//    compile 'com.amap.api:navi-3dmap:latest.integration'
     //搜索
     compile 'com.amap.api:search:latest.integration'
     //定位

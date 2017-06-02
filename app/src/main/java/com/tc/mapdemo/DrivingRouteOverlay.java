@@ -53,6 +53,18 @@ public class DrivingRouteOverlay extends RouteOverlay{
         initBitmapDescriptor();
     }
 
+    public DrivingRouteOverlay(Context context, AMap amap,
+                               LatLonPoint start, LatLonPoint end, List<LatLonPoint> throughPointList) {
+        super(context);
+        mContext = context;
+        mAMap = amap;
+        startPoint = AMapUtil.convertToLatLng(start);
+        endPoint = AMapUtil.convertToLatLng(end);
+        this.throughPointList = throughPointList;
+
+        initBitmapDescriptor();
+    }
+
     public float getRouteWidth() {
         return mWidth;
     }
